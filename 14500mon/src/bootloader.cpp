@@ -9,7 +9,7 @@ void loadBlockIntoProgramMemory(byte block)
 {
   if (block > MAX_PROGRAM_BLOCK)
   {
-    sprintf(printBuffer, "MAX BLOCK %d", MAX_PROGRAM_BLOCK);
+    snprintf(printBuffer, PRINT_BUFFER_SIZE, "MAX BLOCK %d", MAX_PROGRAM_BLOCK);
     Serial.println(printBuffer);
     return;
   }
@@ -46,7 +46,7 @@ void savePrgoramMemoryToBlock(byte block)
 {
   if (block > MAX_PROGRAM_BLOCK)
   {
-    sprintf(printBuffer, "MAX BLOCK %d", MAX_PROGRAM_BLOCK);
+    snprintf(printBuffer, PRINT_BUFFER_SIZE, "MAX BLOCK %d", MAX_PROGRAM_BLOCK);
     Serial.println(printBuffer);
     return;
   }
@@ -100,7 +100,7 @@ uint8_t enterBootloader()
   {
     if (millis() - rxStartTime > RX_TIMEOUT_MS)
     {
-      if (rxBuffer[0] == '\r')
+      if (rxBuffer[0] == '\r' || rxBuffer[0] == '\n')
       {
         return BOOT_ENTER_MONITOR;
       }
