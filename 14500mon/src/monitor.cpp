@@ -11,7 +11,7 @@ unsigned long lastActive;
 
 void enterMonitor()
 {
-  uint8_t ix = 0;
+  uint16_t ix = 0;
 
   printMessage(MESSAGE_MONITOR_BANNER_IX);
 
@@ -38,7 +38,7 @@ void enterMonitor()
         continue;
       }
 
-      if (rxBuffer[ix] == '\r')
+      if (rxBuffer[ix] == '\r' || rxBuffer[ix] == '\n')
       {
         Serial.println(F(""));
         if (processCommand() == RES_LEAVE_MONITOR)
@@ -54,6 +54,11 @@ void enterMonitor()
       if (ix < RX_BUFFER_SIZE)
       {
         ix++;
+      }
+      else
+      {
+        Serial.print("RX buffer overflow, exiting monitor");
+        return;
       }
     }
   }
@@ -73,7 +78,7 @@ void enterMonitor()
 
 uint8_t processCommand()
 {
-  char *token = strtok(rxBuffer, " ");
+  char *token = strtok((char *)rxBuffer, " ");
 
   byte command = CMD_MAX;
   for (byte ix = 0; ix < CMD_MAX; ix++)
@@ -187,9 +192,9 @@ void assemble(int address)
 
         Serial.print((char)rxBuffer[rxBufferIx]);
 
-        if (rxBuffer[rxBufferIx] == '\r')
+        if (rxBuffer[rxBufferIx] == '\r' || rxBuffer[rxBufferIx] == '\n')
         {
-          token = strtok(rxBuffer, " ");
+          token = strtok((char *)rxBuffer, " ");
 
           if (strncmp(token, "X", 1) == 0)
           {
@@ -253,7 +258,7 @@ void assemble(int address)
 
           rxBufferIx = 0;
 
-          if (rxBuffer[rxBufferIx] == '\r')
+          if (rxBuffer[rxBufferIx] == '\r' || rxBuffer[rxBufferIx] == '\n')
           {
             success = true;
           }
@@ -320,11 +325,11 @@ void writeMemory(int address)
         continue;
       }
 
-      if (rxBuffer[rxBufferIx] == '\r')
+      if (rxBuffer[rxBufferIx] == '\r' || rxBuffer[rxBufferIx] == '\n')
       {
         Serial.println(F(""));
 
-        token = strtok(rxBuffer, " ");
+        token = strtok((char *)rxBuffer, " ");
 
         if (strncmp(token, "X", 1) == 0)
         {
@@ -345,10 +350,12 @@ void writeMemory(int address)
         continue;
       }
 
-      if (rxBufferIx < RX_BUFFER_SIZE)
-      {
-        rxBufferIx++;
-      }
+      //if (rxBufferIx < RX_BUFFER_SIZE)
+      //{
+      //  rxBufferIx++;
+      //}
+      // rxBufferIx is a byte so it is ok to wrap to address 00
+      rxBufferIx++;
     }
   }
 }
@@ -367,7 +374,7 @@ void dumpMemory(int start, int end)
   {
     if (address % MON_DUMP_PER_LINE == 0)
     {
-      sprintf(printBuffer, "%04X  ", address);
+      snprintf(printBuffer, PRINT_BUFFER_SIZE, "%04X  ", address);
       Serial.print(printBuffer);
     }
 
@@ -377,7 +384,8 @@ void dumpMemory(int start, int end)
       continue;
     }
 
-    sprintf(printBuffer,
+    snprintf(printBuffer,
+            PRINT_BUFFER_SIZE,
             "%02X%s",
             programMemoryShadow[address],
             ((address % MON_DUMP_PER_LINE) != (MON_DUMP_PER_LINE - 1)) ? "." : "\r\n");
@@ -470,9 +478,9 @@ void disassemble(int address, int end)
  * 
  */
 
-void printSingleMemoryLocation(int address, bool printNewLine = false)
+void printSingleMemoryLocation(int address, bool printNewLine)
 {
-  sprintf(printBuffer, "%04X  %02X .", address, programMemoryShadow[address]);
+  snprintf(printBuffer, PRINT_BUFFER_SIZE, "%04X  %02X .", address, programMemoryShadow[address]);
   Serial.print(printBuffer);
 
   if (printNewLine)
@@ -490,12 +498,12 @@ void printSingleMemoryLocation(int address, bool printNewLine = false)
  * 
  */
 
-void printDisassemblyLine(int address, bool printNewLine = false)
+void printDisassemblyLine(int address, bool printNewLine)
 {
   byte byteCode = programMemoryShadow[address];
   byte opcode = byteCode & 0xF;
 
-  sprintf(printBuffer, "%04X  %02X    %s", address, byteCode, mnemonics + (5 * opcode));
+  snprintf(printBuffer, PRINT_BUFFER_SIZE, "%04X  %02X    %s", address, byteCode, mnemonics + (5 * opcode));
   Serial.print(printBuffer);
 
   // NOPO and all instructions after JMP take no argument.
@@ -506,6 +514,7 @@ void printDisassemblyLine(int address, bool printNewLine = false)
     return;
   }
 
+  //snprintf(printBuffer, PRINT_BUFFER_SIZE, " %02X%s", byteCode >> 4, (printNewLine ? " \r\n" : " "));
   if (opcode == 12)
   {
     // JMP doesn't address I/O.
