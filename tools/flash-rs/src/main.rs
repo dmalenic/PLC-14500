@@ -1,7 +1,5 @@
 use std::env;
 use std::io::{Read, Write};
-use log::error;
-use serialport::available_ports;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
